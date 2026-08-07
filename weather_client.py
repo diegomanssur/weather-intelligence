@@ -358,18 +358,17 @@ def get_city_weather(location: str):
     alerts = []
     forecasts = []
     for row in rows:
-        source_type, headline, narrative, issued_at, effective_at, payload = row
         doc = {
-            "source_type": source_type,
-            "headline": headline,
-            "narrative_text": narrative,
-            "issued_at": issued_at.isoformat() if issued_at else None,
-            "effective_at": effective_at.isoformat() if effective_at else None,
-            "payload": payload,
+            "source_type": row['source_type'],
+            "headline": row['headline'],
+            "narrative_text": row['narrative_text'],
+            "issued_at": row['issued_at'].isoformat() if row['issued_at'] else None,
+            "effective_at": row['effective_at'].isoformat() if row['effective_at'] else None,
+            "payload": row['payload'],
         }
-        if source_type == "alert":
+        if row['source_type'] == "alert":
             alerts.append(doc)
-        elif source_type == "forecast":
+        elif row['source_type'] == "forecast":
             forecasts.append(doc)
 
     return jsonify({"location": location, "alerts": alerts, "forecasts": forecasts})

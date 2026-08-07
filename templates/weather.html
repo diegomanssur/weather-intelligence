@@ -268,9 +268,10 @@
             const card = document.createElement('div');
             card.className = 'city-card';
 
-            const alerts = data.filter(d => d.source_type === 'alert');
-            const forecasts = data.filter(d => d.source_type === 'forecast');
-            const lastUpdate = data.length > 0 ? new Date(data[0].synced_at).toLocaleString() : 'Never';
+            const alerts = data.alerts || [];
+            const forecasts = data.forecasts || [];
+            const allDocs = [...alerts, ...forecasts];
+            const lastUpdate = allDocs.length > 0 && allDocs[0].issued_at ? new Date(allDocs[0].issued_at).toLocaleString() : 'Never';
 
             // Derive city name from coordinates if possible
             const cityName = getCityName(location);
