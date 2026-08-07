@@ -335,7 +335,7 @@ def get_weather_locations():
                 "SELECT DISTINCT location FROM weather_documents ORDER BY location"
             )
             rows = cur.fetchall()
-    return jsonify([{"location": row[0]} for row in rows])
+    return jsonify([{"location": row['location']} for row in rows])
 
 
 @weather_bp.route("/weather/city/<path:location>", methods=["GET"])
