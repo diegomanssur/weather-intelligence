@@ -394,6 +394,9 @@ def search_weather():
         model = get_embedding_model()
         query_embedding = model.encode(query).tolist()
         
+        # Format embedding as a string for pgvector: "[0.1, 0.2, ...]"
+        embedding_str = '[' + ','.join(map(str, query_embedding)) + ']'
+        
         # Query the embeddings table using cosine similarity
         # pgvector's <=> operator is cosine distance (1 - cosine similarity)
         with get_connection() as conn:
@@ -414,7 +417,7 @@ def search_weather():
                     ORDER BY e.embedding <=> %s::vector
                     LIMIT %s
                     """,
-                    (query_embedding, query_embedding, limit),
+                    (embedding_str, embedding_str, limit),
                 )
                 rows = cur.fetchall()
         
