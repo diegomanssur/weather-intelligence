@@ -143,8 +143,8 @@ def handle_exception(err):
 
 @app.route("/")
 def index():
-    """Simple UI to submit a list of stock symbols to sync from Massive."""
-    return render_template("index.html")
+    """Weather Intelligence Dashboard - displays weather alerts and forecasts."""
+    return render_template("weather.html")
 
 
 @app.route("/records")

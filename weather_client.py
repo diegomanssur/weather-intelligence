@@ -312,3 +312,53 @@ def weather_sync():
         return jsonify({"error": str(exc)}), 500
 
     return jsonify({"synced": count})
+
+
+@weather_bp.route("/weather/locations", methods=["GET"])
+def get_weather_locations():
+    """GET /weather/locations - Returns list of unique locations we have weather data for."""
+    ensure_table()
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT DISTINCT location FROM weather_documents ORDER BY location"
+            )
+            rows = cur.fetchall()
+    return jsonify([{"location": row[0]} for row in rows])
+
+
+@weather_bp.route("/weather/city/<path:location>", methods=["GET"])
+def get_city_weather(location: str):
+    """GET /weather/city/{location} - Returns alerts and forecasts for a specific location."""
+    ensure_table()
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT source_type, headline, narrative_text, issued_at, effective_at, payload
+                FROM weather_documents
+                WHERE location = %s
+                ORDER BY effective_at DESC NULLS LAST, issued_at DESC NULLS LAST
+                """,
+                (location,),
+            )
+            rows = cur.fetchall()
+
+    alerts = []
+    forecasts = []
+    for row in rows:
+        source_type, headline, narrative, issued_at, effective_at, payload = row
+        doc = {
+            "source_type": source_type,
+            "headline": headline,
+            "narrative_text": narrative,
+            "issued_at": issued_at.isoformat() if issued_at else None,
+            "effective_at": effective_at.isoformat() if effective_at else None,
+            "payload": payload,
+        }
+        if source_type == "alert":
+            alerts.append(doc)
+        elif source_type == "forecast":
+            forecasts.append(doc)
+
+    return jsonify({"location": location, "alerts": alerts, "forecasts": forecasts})
