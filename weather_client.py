@@ -39,6 +39,17 @@ from psycopg2.extras import execute_values
 
 from lakebase import get_connection
 
+# Lazy-load sentence transformer for vector search
+_embedding_model = None
+
+def get_embedding_model():
+    """Lazy-load the sentence transformer model for vector search."""
+    global _embedding_model
+    if _embedding_model is None:
+        from sentence_transformers import SentenceTransformer
+        _embedding_model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
+    return _embedding_model
+
 # --------------------------------------------------------------------------
 # Config
 # --------------------------------------------------------------------------
@@ -362,3 +373,66 @@ def get_city_weather(location: str):
             forecasts.append(doc)
 
     return jsonify({"location": location, "alerts": alerts, "forecasts": forecasts})
+
+
+@weather_bp.route("/weather/search", methods=["GET"])
+def search_weather():
+    """
+    GET /weather/search?query=<text>&limit=<N>
+    
+    Vector similarity search over weather document embeddings.
+    Embeds the query and returns the top-K most relevant chunks.
+    """
+    query = request.args.get("query", "")
+    limit = int(request.args.get("limit", 10))
+    
+    if not query or not query.strip():
+        return jsonify({"error": "query parameter is required"}), 400
+    
+    try:
+        # Embed the query using the same model as the embeddings pipeline
+        model = get_embedding_model()
+        query_embedding = model.encode(query).tolist()
+        
+        # Query the embeddings table using cosine similarity
+        # pgvector's <=> operator is cosine distance (1 - cosine similarity)
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT 
+                        e.document_id,
+                        e.chunk_index,
+                        e.chunk_text,
+                        d.location,
+                        d.source_type,
+                        d.headline,
+                        d.effective_at,
+                        1 - (e.embedding <=> %s::vector) AS similarity
+                    FROM weather_embeddings e
+                    JOIN weather_documents d ON e.document_id = d.id
+                    ORDER BY e.embedding <=> %s::vector
+                    LIMIT %s
+                    """,
+                    (query_embedding, query_embedding, limit),
+                )
+                rows = cur.fetchall()
+        
+        results = []
+        for row in rows:
+            doc_id, chunk_idx, chunk_text, location, source_type, headline, effective_at, similarity = row
+            results.append({
+                "document_id": doc_id,
+                "chunk_index": chunk_idx,
+                "chunk_text": chunk_text,
+                "location": location,
+                "source_type": source_type,
+                "headline": headline,
+                "effective_at": effective_at.isoformat() if effective_at else None,
+                "similarity": float(similarity),
+            })
+        
+        return jsonify({"query": query, "results": results, "count": len(results)})
+    
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500

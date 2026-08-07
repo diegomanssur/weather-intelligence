@@ -380,14 +380,16 @@
             const query = document.getElementById('searchInput').value;
             if (!query) return;
 
-            try {
-                const response = await fetch(`/weather/search?query=${encodeURIComponent(query)}`);
-                const results = await response.json();
+            const grid = document.getElementById('citiesGrid');
+            grid.innerHTML = '<div class="loading">Searching weather data...</div>';
 
-                const grid = document.getElementById('citiesGrid');
+            try {
+                const response = await fetch(`/weather/search?query=${encodeURIComponent(query)}&limit=20`);
+                const data = await response.json();
+
                 grid.innerHTML = '';
 
-                if (results.length === 0) {
+                if (data.count === 0 || !data.results || data.results.length === 0) {
                     grid.innerHTML = '<div class="empty-state"><h2>No results found</h2><p>Try a different search term</p></div>';
                     return;
                 }
