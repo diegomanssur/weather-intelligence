@@ -438,4 +438,8 @@ def search_weather():
         return jsonify({"query": query, "results": results, "count": len(results)})
     
     except Exception as exc:
+        import traceback
+        import logging
+        logging.error(f"Search error: {exc}")
+        logging.error(traceback.format_exc())
         return jsonify({"error": str(exc)}), 500
