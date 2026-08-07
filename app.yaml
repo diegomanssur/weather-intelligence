@@ -1,0 +1,23 @@
+command:
+  - "python"
+  - "app.py"
+
+env:
+  - name: LAKEBASE_SECRET_SCOPE
+    value: "database"
+  - name: LAKEBASE_SECRET_KEY
+    value: "lakebase-url"
+  - name: MASSIVE_API_BASE_URL
+    value: "https://api.massive.com"
+  - name: MASSIVE_SECRET_SCOPE
+    value: "massive"
+  - name: MASSIVE_SECRET_KEY
+    value: "api-key"
+  - name: NWS_API_BASE_URL
+    value: "https://api.weather.gov"
+  # api.weather.gov requires a descriptive User-Agent identifying the app and
+  # a contact (email or URL) - requests without one are frequently throttled.
+  # No API key/secret needed: unlike Massive, the NWS API and the Census
+  # geocoder weather_client.py uses are both free and keyless.
+  - name: NWS_USER_AGENT
+    value: "weather-sync-app (replace with your app name + contact email)"
