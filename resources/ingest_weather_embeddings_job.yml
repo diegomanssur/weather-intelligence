@@ -1,0 +1,53 @@
+# Databricks Workflow that runs notebooks/ingest_weather_embeddings.py on a
+# schedule. The notebook itself does NOT call the NWS API directly - it reads
+# rows already synced into `weather_documents` (via the Flask app's
+# `POST /weather/sync` route, see weather_client.py), chunks any unembedded
+# `narrative_text`, and writes vector embeddings into `weather_embeddings`
+# for downstream RAG / context-engineering exercises.
+#
+# Deploy: databricks bundle deploy -t dev
+# Run once manually: databricks bundle run ingest_weather_embeddings_job -t dev
+
+resources:
+  jobs:
+    ingest_weather_embeddings_job:
+      name: "[${bundle.target}] Ingest Weather Embeddings"
+
+      # Runs every 15 minutes. Unlike the daily news job, weather alerts are
+      # time-sensitive (a Flash Flood Warning issued at 2pm shouldn't wait
+      # until tomorrow's 6am run to become searchable), so this job runs much
+      # more frequently. It's a no-op / near-instant pass whenever there are
+      # no new unembedded documents, since ingest_weather_embeddings.py's
+      # "unembedded" query is cheap and the model load is the only fixed cost.
+      # Adjust to match how often POST /weather/sync itself runs.
+      schedule:
+        quartz_cron_expression: "0 */15 * * * ?"
+        timezone_id: "UTC"
+        pause_status: PAUSED  # flip to UNPAUSED once you've validated a manual run
+
+      email_notifications:
+        on_failure:
+          - ${workspace.current_user.userName}
+
+      max_concurrent_runs: 1
+
+      job_clusters:
+        - job_cluster_key: default_cluster
+          new_cluster:
+            spark_version: "15.4.x-scala2.12"
+            node_type_id: "i3.xlarge"
+            num_workers: 0  # single-node: this notebook has no Spark distribution step
+            data_security_mode: SINGLE_USER
+
+      tasks:
+        - task_key: ingest_weather_embeddings
+          job_cluster_key: default_cluster
+          notebook_task:
+            notebook_path: ../notebooks/ingest_weather_embeddings.py
+            base_parameters:
+              documents_table_name: "weather_documents"
+              embeddings_table_name: "weather_embeddings"
+              embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
+              chunk_size: "800"
+              chunk_overlap: "100"
+              batch_size: "32"
