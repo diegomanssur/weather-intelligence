@@ -38,6 +38,15 @@ resources:
             node_type_id: "i3.xlarge"
             num_workers: 0  # single-node: this notebook has no Spark distribution step
             data_security_mode: SINGLE_USER
+            libraries:
+              - pypi:
+                  package: "databricks-sdk>=0.118.0"
+              - pypi:
+                  package: "sentence-transformers"
+              - pypi:
+                  package: "psycopg"
+              - pypi:
+                  package: "sqlalchemy"
 
       tasks:
         - task_key: ingest_weather_embeddings
