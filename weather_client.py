@@ -374,6 +374,36 @@ def get_city_weather(location: str):
     return jsonify({"location": location, "alerts": alerts, "forecasts": forecasts})
 
 
+@weather_bp.route("/weather/alerts", methods=["GET"])
+def get_all_alerts():
+    """GET /weather/alerts - Returns all active weather alerts across all locations."""
+    ensure_table()
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT location, headline, narrative_text, issued_at, effective_at, payload
+                FROM weather_documents
+                WHERE source_type = 'alert'
+                ORDER BY issued_at DESC NULLS LAST
+                """
+            )
+            rows = cur.fetchall()
+
+    alerts = []
+    for row in rows:
+        alerts.append({
+            "location": row['location'],
+            "headline": row['headline'],
+            "narrative_text": row['narrative_text'],
+            "issued_at": row['issued_at'].isoformat() if row['issued_at'] else None,
+            "effective_at": row['effective_at'].isoformat() if row['effective_at'] else None,
+            "payload": row['payload'],
+        })
+
+    return jsonify(alerts)
+
+
 @weather_bp.route("/weather/search", methods=["GET"])
 def search_weather():
     """
