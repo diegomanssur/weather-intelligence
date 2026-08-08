@@ -30,7 +30,7 @@ ASSUMPTIONS CALLED OUT (please verify against your actual codebase):
 
 import hashlib
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 from typing import Any, Iterable
 
 import requests
@@ -452,16 +452,15 @@ def search_weather():
         
         results = []
         for row in rows:
-            doc_id, chunk_idx, chunk_text, location, source_type, headline, effective_at, similarity = row
             results.append({
-                "document_id": doc_id,
-                "chunk_index": chunk_idx,
-                "chunk_text": chunk_text,
-                "location": location,
-                "source_type": source_type,
-                "headline": headline,
-                "effective_at": effective_at.isoformat() if effective_at else None,
-                "similarity": float(similarity),
+                "document_id": row['document_id'],
+                "chunk_index": row['chunk_index'],
+                "chunk_text": row['chunk_text'],
+                "location": row['location'],
+                "source_type": row['source_type'],
+                "headline": row['headline'],
+                "effective_at": row['effective_at'].isoformat() if isinstance(row['effective_at'], (datetime, date)) else row['effective_at'],
+                "similarity": float(row['similarity']),
             })
         
         return jsonify({"query": query, "results": results, "count": len(results)})
