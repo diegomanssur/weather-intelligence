@@ -323,6 +323,31 @@
             return card;
         }
 
+        function createSearchResultCard(result) {
+            const card = document.createElement('div');
+            card.className = 'city-card';
+
+            const cityName = getCityName(result.location);
+            const similarity = Math.round(result.similarity * 100);
+            const sourceIcon = result.source_type === 'alert' ? '⚠️' : '📅';
+            const sourceLabel = result.source_type === 'alert' ? 'Alert' : 'Forecast';
+
+            card.innerHTML = `
+                <div class="city-header">
+                    <div>
+                        <div class="city-name">${cityName}</div>
+                        <div class="last-updated">${sourceIcon} ${sourceLabel} • ${similarity}% match</div>
+                    </div>
+                </div>
+                <div class="weather-section">
+                    <div class="section-title">${result.headline || 'Weather Information'}</div>
+                    <div class="forecast-text" style="margin-top: 10px; line-height: 1.6;">${result.chunk_text}</div>
+                </div>
+            `;
+
+            return card;
+        }
+
         async function renderAlerts() {
             const grid = document.getElementById('alertsGrid');
             grid.innerHTML = '<div class="loading">Loading alerts...</div>';
@@ -372,7 +397,11 @@
             document.getElementById('citiesGrid').style.display = tab === 'all' ? 'grid' : 'none';
             document.getElementById('alertsGrid').style.display = tab === 'alerts' ? 'grid' : 'none';
 
-            if (tab === 'alerts') {
+            if (tab === 'all') {
+                // Clear search input and reload full location data
+                document.getElementById('searchInput').value = '';
+                renderAllCities();
+            } else if (tab === 'alerts') {
                 renderAlerts();
             }
         }
@@ -395,19 +424,17 @@
                     return;
                 }
 
-                // Group results by location
-                const grouped = {};
-                data.results.forEach(item => {
-                    if (!grouped[item.location]) {
-                        grouped[item.location] = [];
-                    }
-                    grouped[item.location].push(item);
+                // Display search results
+                data.results.forEach(result => {
+                    const card = createSearchResultCard(result);
+                    grid.appendChild(card);
                 });
 
-                for (const [location, data] of Object.entries(grouped)) {
-                    const card = createCityCard(location, data);
-                    grid.appendChild(card);
-                }
+                // Show result count
+                const countDiv = document.createElement('div');
+                countDiv.style.cssText = 'grid-column: 1/-1; padding: 10px; text-align: center; color: #666; font-size: 14px;';
+                countDiv.textContent = `Found ${data.count} relevant result${data.count !== 1 ? 's' : ''} for "${query}"`;
+                grid.insertBefore(countDiv, grid.firstChild);
             } catch (error) {
                 alert(`Search error: ${error.message}`);
             }
